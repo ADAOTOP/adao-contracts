@@ -24,7 +24,6 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     uint public lastClaimedEra;
     uint public ratio = RATIO_PRECISION;
-    uint public lastRatio = RATIO_PRECISION;
 
     WithdrawRecord[] public records;
     uint public recordsIndex;
@@ -101,7 +100,6 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         //calc ratio
         uint _balance = address(this).balance;
         uint _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
-        lastRatio = ratio;
         ratio = (_balance + _NStakedAmount - toWithdrawed) * RATIO_PRECISION / totalSupply();
 
 
