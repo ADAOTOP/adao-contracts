@@ -15,15 +15,14 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     }
 
     DappsStaking public constant DAPPS_STAKING = DappsStaking(0x0000000000000000000000000000000000005001);
-    address public constant CONTRACT_ADDRESS = 0x1CeE94a11eAf390B67Aa346E9Dda3019DfaD4f6A;
     uint public constant RATIO_PRECISION = 100000000; //precision: 0.00000001
     uint public constant MAX_TRANSFERS = 50;
     uint public constant MINIMUM_WITHDRAW = 1000000000000000000;
 
+    address public constant CONTRACT_ADDRESS = 0x1CeE94a11eAf390B67Aa346E9Dda3019DfaD4f6A;
     uint public constant MINIMUM_REMAINING = 1000000000000000000;
 
     uint public unbondingPeriod;
-
     uint public lastClaimedEra;
     uint public ratio = RATIO_PRECISION;
 
@@ -31,7 +30,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     uint public recordsIndex;
     uint public toWithdrawed;
 
-    mapping(address => bool) public whiteList; //allow whiteListed contracts to withdraw.
+    mapping(address => bool) public whiteList; //allow whiteListed contracts to withdraw to.
 
     event PoolUpdate(uint _recordsIndex, uint _ibASTR, uint _ratio);
     event ClaimFailed(uint era);
