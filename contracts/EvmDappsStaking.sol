@@ -10,7 +10,7 @@ import "./interfaces/DappsStaking.sol";
 contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     struct WithdrawRecord{
         uint era;   //the era started unbonding.
-        address account;
+        address payable account;
         uint amount;
     }
 
@@ -19,6 +19,8 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     uint public constant RATIO_PRECISION = 100000000; //precision: 0.00000001
     uint public constant MAX_TRANSFERS = 50;
     uint public constant MINIMUM_WITHDRAW = 1000000000000000000;
+
+    uint public constant MINIMUM_REMAINING = 1000000000000000000;
 
     uint public unbondingPeriod;
 
@@ -37,12 +39,16 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     constructor(
         string memory name,
-        string memory symbol,
-        uint _lastClaimedEra
+        string memory symbol
     ) ERC20(name, symbol) {
-        lastClaimedEra = _lastClaimedEra;
+        lastClaimedEra = DAPPS_STAKING.read_current_era() - 1;
         unbondingPeriod = DAPPS_STAKING.read_unbonding_period();
     }
+
+     /**
+     * @dev The contract should be able to receive Eth.
+     */
+    receive() external payable virtual {}
 
     function getWithdrawRecords(uint _startIndex, uint _capacity) external view returns(WithdrawRecord[] memory){
         uint _recordsLength = records.length;
@@ -98,9 +104,12 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         }
 
         //calc ratio
-        uint _balance = address(this).balance;
-        uint _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
-        ratio = (_balance + _NStakedAmount - toWithdrawed) * RATIO_PRECISION / totalSupply();
+        uint _totalSupply = totalSupply();
+        if(_totalSupply > 0){
+            uint _balance = address(this).balance;
+            uint _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
+            ratio = (_balance + _NStakedAmount - toWithdrawed) * RATIO_PRECISION / _totalSupply;
+        }
 
 
         //proceeding maturing records
@@ -129,7 +138,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     function stakeRemaining() internal{
         uint128 _balance = uint128(address(this).balance);
-        if(_balance > 0){
+        if(_balance > MINIMUM_REMAINING){
             DAPPS_STAKING.bond_and_stake(CONTRACT_ADDRESS, _balance);
         }
 
@@ -155,13 +164,10 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         _burn(_msgSender(), ibASTRAmount);
         uint astrAmount = ibASTRAmount * ratio  / RATIO_PRECISION;
         require(astrAmount <= type(uint128).max, "too large amount");
-        require(astrAmount > MINIMUM_WITHDRAW, "< MINIMUM_WITHDRAW");
+        require(astrAmount >= MINIMUM_WITHDRAW, "< MINIMUM_WITHDRAW");
 
         //save new record
-        WithdrawRecord storage _newRecord = records.push();
-        _newRecord.account = account;
-        _newRecord.amount = astrAmount;
-        _newRecord.era = currentEra;
+        records.push(WithdrawRecord(currentEra, account, astrAmount));
         toWithdrawed += astrAmount;
         
         DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(astrAmount));
@@ -197,5 +203,13 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     function setWhiteList(address payable _contract, bool isTrue) external onlyOwner{
         whiteList[_contract] = isTrue;
+    }
+
+    function getBalance() external view returns(uint128 _balance){
+        _balance = uint128(address(this).balance);
+    }
+
+    function getStaked() external view returns(uint _NStakedAmount){
+        _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
     }
 }

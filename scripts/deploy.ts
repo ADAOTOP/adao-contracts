@@ -5,21 +5,18 @@
 // Runtime Environment's members available in the global scope.
 import { ethers } from "hardhat";
 
+const officialAccount = "0x622cB4f5Ab9fA81eEC83251D23Cc0AF5f2ee029F";
+
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+  const theSigner = await ethers.getSigner(officialAccount);
 
   // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const c = await ethers.getContractFactory("EvmDappsStaking", theSigner);
+  const ci = await c.deploy("ADAO insterest-bearing SBY", "ibSBY");
 
-  await greeter.deployed();
+  await ci.deployed();
 
-  console.log("Greeter deployed to:", greeter.address);
+  console.log("contract deployed to:", ci.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
