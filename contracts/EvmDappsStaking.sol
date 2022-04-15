@@ -80,7 +80,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         return gapEras;
     }
 
-    function claimAndTransfer() internal nonReentrant returns (uint){
+    function claimAndTransfer(uint _deposited) internal nonReentrant returns (uint){
         //claim and update lastClaimedEra
         uint[] memory gapEras = erasToClaim();
         uint currentEra = gapEras[gapEras.length - 1];
@@ -105,7 +105,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         //calc ratio
         uint _totalSupply = totalSupply();
         if(_totalSupply > 0){
-            uint _balance = address(this).balance;
+            uint _balance = address(this).balance - _deposited;
             uint _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
             ratio = (_balance + _NStakedAmount - toWithdrawed) * RATIO_PRECISION / _totalSupply;
         }
@@ -151,7 +151,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         external
         payable
     {
-        claimAndTransfer();
+        claimAndTransfer(msg.value);
         if(msg.value > 0){
             _mint(account, msg.value * RATIO_PRECISION / ratio);
         }
@@ -159,7 +159,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     }
 
     function _withdraw(address payable account, uint ibASTRAmount) internal{
-        uint currentEra = claimAndTransfer();
+        uint currentEra = claimAndTransfer(0);
         _burn(_msgSender(), ibASTRAmount);
         uint astrAmount = ibASTRAmount * ratio  / RATIO_PRECISION;
         require(astrAmount <= type(uint128).max, "too large amount");

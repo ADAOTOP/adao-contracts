@@ -8,14 +8,14 @@ import { ethers } from "hardhat";
 
 const officialAccount = "0x622cB4f5Ab9fA81eEC83251D23Cc0AF5f2ee029F";
 
-const shibuyaContract = "0xAAf103f445aFFB3246c3c8Fe2370F861C9dcb3E2";
+const shibuyaContract = "0x27A5CBd4a8Fc7F0c837712c89A1d5f2bF665EF2b";
 
 async function main() {
   const theSigner = await ethers.getSigner(officialAccount);
 
     const c = await ethers.getContractAt("EvmDappsStaking", shibuyaContract, theSigner);
     // try{
-        // const r = await c.depositFor(officialAccount, {value: "0"});
+        // const r = await c.depositFor(officialAccount, {value: "7000000000000000000"});
         // const r2 = await c.balanceOf(officialAccount);
         // const r3 = await c.withdraw("1000000000000000000");
         // console.log(`r: ${JSON.stringify(r)}`);
@@ -25,15 +25,19 @@ async function main() {
     //     console.log(`e: ${JSON.stringify(e)}`)
     // }
     
-    // const e = await c.getWithdrawRecords(0, 5);
-    const e = await c.records("0");
+    const e = await c.getWithdrawRecords(0, 5);
+    // const e = await c.records("0");
     console.log(`e: ${JSON.stringify(e)}`);
-    // const e1 = await c.getBalance();
-    // const e2 = await c.getStaked();
-    // const e3 = await c.ratio();
-    // console.log(`e1: ${JSON.stringify(e1)}`);
-    // console.log(`e2: ${JSON.stringify(e2)}`);
-    // console.log(`e3: ${JSON.stringify(e3)}`);
+    const e1 = await c.getBalance();
+    const e2 = await c.getStaked();
+    const e3 = await c.ratio();
+    const e4 = await c.toWithdrawed();
+    const e5 = await c.totalSupply();
+    console.log(`e1: ${JSON.stringify(e1.toString())}`);
+    console.log(`e2: ${JSON.stringify(e2.toString())}`);
+    console.log(`e3: ${JSON.stringify(e3.toString())}`);
+    console.log(`e4: ${JSON.stringify(e4.toString())}`);
+    console.log(`e5: ${JSON.stringify(e5.toString())}`);
 
 }
 
