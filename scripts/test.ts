@@ -25,7 +25,8 @@ async function main() {
     //     console.log(`e: ${JSON.stringify(e)}`)
     // }
     
-    const e = await c.getWithdrawRecords(0, 5);
+    // const e = await c.getWithdrawRecords(0, 5);
+    const e = await c.records("0");
     console.log(`e: ${JSON.stringify(e)}`);
     // const e1 = await c.getBalance();
     // const e2 = await c.getStaked();

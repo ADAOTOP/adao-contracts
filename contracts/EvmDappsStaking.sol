@@ -211,4 +211,8 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     function getStaked() external view returns(uint _NStakedAmount){
         _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
     }
+
+    function getRecordsLength() external view returns(uint _length){
+        return records.length;
+    }
 }
