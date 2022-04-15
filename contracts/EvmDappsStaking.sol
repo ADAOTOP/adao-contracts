@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/DappsStaking.sol";
 
-//idSDN
+//ibASTR
 contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     struct WithdrawRecord{
         uint era;   //the era started unbonding.
@@ -17,35 +17,32 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     DappsStaking public constant DAPPS_STAKING = DappsStaking(0x0000000000000000000000000000000000005001);
     address public constant CONTRACT_ADDRESS = 0x1CeE94a11eAf390B67Aa346E9Dda3019DfaD4f6A;
     uint public constant RATIO_PRECISION = 100000000; //precision: 0.00000001
-    uint public constant FEE_PRECISION = 10000;
+    uint public constant MAX_TRANSFERS = 50;
+    uint public constant MINIMUM_WITHDRAW = 1000000000000000000;
 
-    uint public fee; //unit: 0.0001
-    address public feeTo;
     uint public unbondingPeriod;
 
     uint public lastClaimedEra;
-    uint public prevUnstakeSDN;
     uint public ratio = RATIO_PRECISION;
+    uint public lastRatio = RATIO_PRECISION;
 
     WithdrawRecord[] public records;
     uint public recordsIndex;
-    uint public toWithdrawSDN;
+    uint public toWithdrawed;
 
-    event PoolUpdate(uint _recordsIndex, uint _ksdn, uint _ratio);
+    mapping(address => bool) public whiteList; //allow whiteListed contracts to withdraw.
+
+    event PoolUpdate(uint _recordsIndex, uint _ibASTR, uint _ratio);
+    event ClaimFailed(uint era);
 
 
     constructor(
         string memory name,
         string memory symbol,
-        uint _fee,
-        address _feeTo,
-        uint _lastClaimedEra,
-        uint _unbondingPeriod
+        uint _lastClaimedEra
     ) ERC20(name, symbol) {
-        fee = _fee;
-        feeTo = _feeTo;
         lastClaimedEra = _lastClaimedEra;
-        unbondingPeriod = _unbondingPeriod;
+        unbondingPeriod = DAPPS_STAKING.read_unbonding_period();
     }
 
     function getWithdrawRecords(uint _startIndex, uint _capacity) external view returns(WithdrawRecord[] memory){
@@ -79,7 +76,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         return gapEras;
     }
 
-    function claimAndTransfer(uint depositSDN) internal nonReentrant returns (uint){
+    function claimAndTransfer() internal nonReentrant returns (uint){
         //claim and update lastClaimedEra
         uint[] memory gapEras = erasToClaim();
         uint currentEra = gapEras[gapEras.length - 1];
@@ -87,49 +84,45 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
             for(uint j = 0; j < gapEras.length - 1; j++){
                 uint128 toClaimEra = uint128(gapEras[j]);
                 //todo verify if try/catch work.
-                try DAPPS_STAKING.claim(CONTRACT_ADDRESS, toClaimEra){}
-                catch {}
+                //in case rewards has claimed by others.
+                try DAPPS_STAKING.claim_staker(CONTRACT_ADDRESS){}
+                catch {
+                    emit ClaimFailed(toClaimEra);
+                }
             }
+
+            //in case no unbonded tokens.
+            try DAPPS_STAKING.withdraw_unbonded(){}
+            catch {}
+
             lastClaimedEra = currentEra - 1;
         }
 
-        //calc unstakeAmount
-        DAPPS_STAKING.withdraw_unbonded();
+        //calc ratio
         uint _balance = address(this).balance;
-        uint _unbondingAmount = DAPPS_STAKING.read_unbonding_period();
-        uint _nowUnstakeSDN = _balance + _unbondingAmount - depositSDN;
+        uint _NStakedAmount = DAPPS_STAKING.read_staked_amount(abi.encodePacked(address(this)));
+        lastRatio = ratio;
+        ratio = (_balance + _NStakedAmount - toWithdrawed) * RATIO_PRECISION / totalSupply();
 
-        //calc dAppsStaking reward
-        uint rewardAmount = (_nowUnstakeSDN - prevUnstakeSDN);
-
-        if(rewardAmount > 0){
-            //update ratio
-            //todo veirfy param and return of read_staked_amount
-            uint _stakedAmount = DAPPS_STAKING.read_staked_amount(address(this));
-            ratio = (_stakedAmount + _nowUnstakeSDN - toWithdrawSDN) * RATIO_PRECISION / totalSupply();
-
-            //mint fee
-            _mint(feeTo, (rewardAmount * fee / FEE_PRECISION ) * RATIO_PRECISION / ratio);
-        }
 
         //proceeding maturing records
         uint _recordsLength = records.length;
         uint _recordsIndex = recordsIndex;
         uint i = _recordsIndex;
         uint withdrawedAmount;
-        for(; i < _recordsLength; i++){
+        uint maxTransferIndex = _recordsIndex + MAX_TRANSFERS;
+        for(; i < _recordsLength && i < maxTransferIndex; i++){
             WithdrawRecord storage _record = records[i];
             if(currentEra - _record.era >= unbondingPeriod){
                 //transfer
-                (bool success,) = _record.account.call{value: _record.amount}("");
-                require(success, "trans fail");
+                _record.account.call{value: _record.amount}("");
                 withdrawedAmount += _record.amount;
             }else{
                 break;
             }
         }
         if(i > _recordsIndex){
-            toWithdrawSDN -= withdrawedAmount;
+            toWithdrawed -= withdrawedAmount;
             recordsIndex =  i;
         }
 
@@ -141,7 +134,6 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         if(_balance > 0){
             DAPPS_STAKING.bond_and_stake(CONTRACT_ADDRESS, _balance);
         }
-        prevUnstakeSDN = DAPPS_STAKING.read_unbonding_period();
 
         emit PoolUpdate(recordsIndex, totalSupply(), ratio);
     }
@@ -149,52 +141,63 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     /**
      * @dev Allow a user to deposit underlying tokens and mint the corresponding number of wrapped tokens.
      */
-    function depositFor(address account)
+    function depositFor(address payable account)
         external
         payable
     {
-        claimAndTransfer(msg.value);
+        claimAndTransfer();
         if(msg.value > 0){
             _mint(account, msg.value * RATIO_PRECISION / ratio);
         }
         stakeRemaining();
     }
 
-    /**
-     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
-     */
-    function withdrawTo(address payable account, uint ksdnAmount)
-        external
-    {
-        require(ksdnAmount > 0, "ksdnAmount 0");
-        uint currentEra = claimAndTransfer(0);
-        _burn(_msgSender(), ksdnAmount);
-        uint sdnAmount = ksdnAmount * ratio  / RATIO_PRECISION;
-        require(sdnAmount <= type(uint128).max, "too large amount");
+    function _withdraw(address payable account, uint ibASTRAmount) internal{
+        uint currentEra = claimAndTransfer();
+        _burn(_msgSender(), ibASTRAmount);
+        uint astrAmount = ibASTRAmount * ratio  / RATIO_PRECISION;
+        require(astrAmount <= type(uint128).max, "too large amount");
+        require(astrAmount > MINIMUM_WITHDRAW, "< MINIMUM_WITHDRAW");
 
         //save new record
         WithdrawRecord storage _newRecord = records.push();
         _newRecord.account = account;
-        _newRecord.amount = sdnAmount;
+        _newRecord.amount = astrAmount;
         _newRecord.era = currentEra;
-        toWithdrawSDN += sdnAmount;
+        toWithdrawed += astrAmount;
         
-        DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(sdnAmount));
+        DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(astrAmount));
 
         stakeRemaining();
     }
 
-    function setFee(uint _fee, address _feeTo) external onlyOwner{
-        fee = _fee;
-        feeTo = _feeTo;
+    function withdraw(uint ibASTRAmount)
+        external
+    {
+        require(msg.sender == tx.origin, "only EOA");
+        _withdraw(payable(msg.sender), ibASTRAmount);
     }
 
-    function updateUnbondingPeriod(uint _unbondingPeriod) external onlyOwner{
-        unbondingPeriod = _unbondingPeriod;
+    /**
+     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
+     */
+    function withdrawTo(address payable account, uint ibASTRAmount)
+        external
+    {
+        require(whiteList[account], "not in white list");
+        _withdraw(account, ibASTRAmount);
+    }
+
+    function updateUnbondingPeriod() external onlyOwner{
+        unbondingPeriod = DAPPS_STAKING.read_unbonding_period();
     }
 
     function calcDailyApr() external view returns(uint){
         uint32 era = uint32(DAPPS_STAKING.read_current_era() - 1);
         return DAPPS_STAKING.read_era_reward(era) * RATIO_PRECISION / DAPPS_STAKING.read_era_staked(era);
+    }
+
+    function setWhiteList(address payable _contract, bool isTrue) external onlyOwner{
+        whiteList[_contract] = isTrue;
     }
 }
