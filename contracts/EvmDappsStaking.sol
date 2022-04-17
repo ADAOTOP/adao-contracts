@@ -30,6 +30,8 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     uint public recordsIndex;
     uint public toWithdrawed;
 
+    bool public isWithdrawDone = true;
+
     mapping(address => bool) public whiteList; //allow whiteListed contracts to withdraw to.
 
     event PoolUpdate(uint _recordsIndex, uint _ibASTR, uint _ratio);
@@ -130,6 +132,11 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         if(i > _recordsIndex){
             toWithdrawed -= withdrawedAmount;
             recordsIndex =  i;
+            if(i >= maxTransferIndex && i < _recordsLength){
+                isWithdrawDone = false;
+            }else{
+                isWithdrawDone = true;
+            }
         }
 
         return currentEra;
@@ -137,7 +144,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     function stakeRemaining() internal{
         uint128 _balance = uint128(address(this).balance);
-        if(_balance > MINIMUM_REMAINING){
+        if(_balance > MINIMUM_REMAINING && isWithdrawDone){
             DAPPS_STAKING.bond_and_stake(CONTRACT_ADDRESS, _balance);
         }
 
