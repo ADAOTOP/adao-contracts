@@ -29,6 +29,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     WithdrawRecord[] public records;
     uint public recordsIndex;
     uint public toWithdrawed;
+    mapping(address => uint[]) public userRecordsIndexes;
 
     bool public isWithdrawDone = true;
 
@@ -54,16 +55,35 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     function getWithdrawRecords(uint _startIndex, uint _capacity) external view returns(WithdrawRecord[] memory){
         uint _recordsLength = records.length;
         uint _endIndex;
-        if(_startIndex + _capacity - 1 > _recordsLength){
+        if(_startIndex + _capacity > _recordsLength){
             _endIndex = _recordsLength;
         }else{
-            _endIndex = _startIndex + _capacity - 1;
+            _endIndex = _startIndex + _capacity;
         }
 
         WithdrawRecord[] memory result = new WithdrawRecord[](_endIndex - _startIndex);
         uint j;
         for(uint i = _startIndex; i < _endIndex; i++){
             result[j] = records[i];
+            j++;
+        }
+        return result;
+    }
+
+    function getUserWithdrawRecords(address account, uint _startIndex, uint _capacity) external view returns(WithdrawRecord[] memory){
+        uint[] storage _recordsIndexes = userRecordsIndexes[account];
+        uint _recordsLength = _recordsIndexes.length;
+        uint _endIndex;
+        if(_startIndex + _capacity > _recordsLength){
+            _endIndex = _recordsLength;
+        }else{
+            _endIndex = _startIndex + _capacity;
+        }
+
+        WithdrawRecord[] memory result = new WithdrawRecord[](_endIndex - _startIndex);
+        uint j;
+        for(uint i = _startIndex; i < _endIndex; i++){
+            result[j] = records[_recordsIndexes[i]];
             j++;
         }
         return result;
@@ -174,6 +194,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
         //save new record
         records.push(WithdrawRecord(currentEra, account, astrAmount));
+        userRecordsIndexes[account].push(records.length - 1);
         toWithdrawed += astrAmount;
         
         DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(astrAmount));
@@ -221,5 +242,9 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
 
     function getRecordsLength() external view returns(uint _length){
         return records.length;
+    }
+
+    function getUserRecordsLength(address account) external view returns(uint _length){
+        return userRecordsIndexes[account].length;
     }
 }
