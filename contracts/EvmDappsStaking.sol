@@ -12,6 +12,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         uint era;   //the era started unbonding.
         address payable account;
         uint amount;
+        uint index;
     }
 
     DappsStaking public constant DAPPS_STAKING = DappsStaking(0x0000000000000000000000000000000000005001);
@@ -193,8 +194,9 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         require(astrAmount >= MINIMUM_WITHDRAW, "< MINIMUM_WITHDRAW");
 
         //save new record
-        records.push(WithdrawRecord(currentEra, account, astrAmount));
-        userRecordsIndexes[account].push(records.length - 1);
+        uint index = records.length;
+        records.push(WithdrawRecord(currentEra, account, astrAmount, index));
+        userRecordsIndexes[account].push(index);
         toWithdrawed += astrAmount;
         
         DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(astrAmount));
