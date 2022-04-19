@@ -19,10 +19,9 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     uint public constant RATIO_PRECISION = 100000000; //precision: 0.00000001
     uint public constant MAX_TRANSFERS = 50;
     uint public constant MINIMUM_WITHDRAW = 1000000000000000000;
-
-    address public constant CONTRACT_ADDRESS = 0x1CeE94a11eAf390B67Aa346E9Dda3019DfaD4f6A;
     uint public constant MINIMUM_REMAINING = 1000000000000000000;
 
+    address public contractAddress;
     uint public unbondingPeriod;
     uint public lastClaimedEra;
     uint public ratio = RATIO_PRECISION;
@@ -112,7 +111,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
                 uint128 toClaimEra = uint128(gapEras[j]);
                 //todo verify if try/catch work.
                 //in case rewards has claimed by others.
-                try DAPPS_STAKING.claim_staker(CONTRACT_ADDRESS){}
+                try DAPPS_STAKING.claim_staker(contractAddress){}
                 catch {
                     emit ClaimFailed(toClaimEra);
                 }
@@ -166,7 +165,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     function stakeRemaining() internal{
         uint128 _balance = uint128(address(this).balance);
         if(_balance > MINIMUM_REMAINING && isWithdrawDone){
-            DAPPS_STAKING.bond_and_stake(CONTRACT_ADDRESS, _balance);
+            DAPPS_STAKING.bond_and_stake(contractAddress, _balance);
         }
 
         emit PoolUpdate(recordsIndex, totalSupply(), ratio);
@@ -199,7 +198,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         userRecordsIndexes[account].push(index);
         toWithdrawed += astrAmount;
         
-        DAPPS_STAKING.unbond_and_unstake(CONTRACT_ADDRESS, uint128(astrAmount));
+        DAPPS_STAKING.unbond_and_unstake(contractAddress, uint128(astrAmount));
 
         stakeRemaining();
     }
@@ -221,17 +220,23 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
         _withdraw(account, ibASTRAmount);
     }
 
+
     function updateUnbondingPeriod() external onlyOwner{
         unbondingPeriod = DAPPS_STAKING.read_unbonding_period();
     }
 
+    function setWhiteList(address payable _contract, bool isTrue) external onlyOwner{
+        whiteList[_contract] = isTrue;
+    }
+
+    function setContractAddress(address _contract) external onlyOwner{
+        contractAddress = _contract;
+    }
+
+
     function calcDailyApr() external view returns(uint){
         uint32 era = uint32(DAPPS_STAKING.read_current_era() - 1);
         return DAPPS_STAKING.read_era_reward(era) * RATIO_PRECISION / DAPPS_STAKING.read_era_staked(era);
-    }
-
-    function setWhiteList(address payable _contract, bool isTrue) external onlyOwner{
-        whiteList[_contract] = isTrue;
     }
 
     function getBalance() external view returns(uint128 _balance){
