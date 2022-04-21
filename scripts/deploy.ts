@@ -12,7 +12,7 @@ async function main() {
 
   // We get the contract to deploy
   const c = await ethers.getContractFactory("EvmDappsStaking", theSigner);
-  const ci = await c.deploy("ADAO insterest-bearing SBY", "ibSBY");
+  const ci = await c.deploy("ADAO insterest-bearing ASTR", "ibASTR");
 
   await ci.deployed();
 
