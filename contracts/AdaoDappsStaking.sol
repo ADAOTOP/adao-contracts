@@ -1,13 +1,14 @@
 //SPDX-License-Identifier: GPLv3
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./interfaces/DappsStaking.sol";
 
 //ibASTR
-contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
+contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     struct WithdrawRecord{
         uint era;   //the era started unbonding.
         address payable account;
@@ -24,14 +25,14 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     address public contractAddress;
     uint public unbondingPeriod;
     uint public lastClaimedEra;
-    uint public ratio = RATIO_PRECISION;
+    uint public ratio;
 
     WithdrawRecord[] public records;
     uint public recordsIndex;
     uint public toWithdrawed;
     mapping(address => uint[]) public userRecordsIndexes;
 
-    bool public isWithdrawDone = true;
+    bool public isWithdrawDone;
 
     mapping(address => bool) public whiteList; //allow whiteListed contracts to withdraw to.
 
@@ -39,12 +40,17 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     event ClaimFailed(uint era);
 
 
-    constructor(
+    function initialize(
         string memory name,
         string memory symbol
-    ) ERC20(name, symbol) {
+    ) public initializer {
+        __ERC20_init_unchained(name, symbol);
+        __Ownable_init_unchained();
+        __ReentrancyGuard_init_unchained();
         lastClaimedEra = DAPPS_STAKING.read_current_era() - 1;
         unbondingPeriod = DAPPS_STAKING.read_unbonding_period();
+        ratio = RATIO_PRECISION;
+        isWithdrawDone = true;
     }
 
      /**
@@ -211,7 +217,7 @@ contract EvmDappsStaking is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
+     * @dev Allow a contract to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
      */
     function withdrawTo(address payable account, uint ibASTRAmount)
         external
