@@ -25,19 +25,25 @@ contract DistributeRewards is Ownable
         distributeRewards();
     }
 
-    function distributeRewards() internal
+    function distributeRewards() public payable
     {
-        uint adaoAmount = msg.value * adaoPercent / 100;
-        uint treasuryAmount = msg.value * treasuryPercent / 100;
-        uint teamAmount = msg.value - adaoAmount - treasuryAmount;
+        uint _balance = address(this).balance;
+        if(_balance > 100){
+            uint adaoAmount = _balance * adaoPercent / 100;
+            uint treasuryAmount = _balance * treasuryPercent / 100;
+            uint teamAmount = _balance - adaoAmount - treasuryAmount;
 
-        (bool success1,) = team.call{value: teamAmount}("");
-        require(success1, "failed to team");
-        (bool success2,) = treasury.call{value: treasuryAmount}("");
-        require(success2, "failed to treasury");
-        (bool success3,) = address(adao).call{value: adaoAmount}("");
-        require(success3, "failed to adao");
-        adao.depositFor(team);
+            (bool success1,) = team.call{value: teamAmount}("");
+            require(success1, "failed to team");
+            (bool success2,) = treasury.call{value: treasuryAmount}("");
+            require(success2, "failed to treasury");
+            (bool success3,) = address(adao).call{value: adaoAmount}("");
+            require(success3, "failed to adao");
+
+            if(msg.sender != address(adao)){
+                adao.depositFor(team);
+            }
+        }
     }
 
     function setTreasury(address payable _treasury) external onlyOwner{
