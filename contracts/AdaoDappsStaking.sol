@@ -6,9 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./interfaces/DappsStaking.sol";
+import "./interfaces/AdaoDappsStakingInterface.sol";
 
 //ibASTR
-contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, AdaoDappsStakingInterface {
     struct WithdrawRecord{
         uint era;   //the era started unbonding.
         address payable account;
@@ -183,6 +184,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
     function depositFor(address payable account)
         external
         payable
+        override
     {
         claimAndTransfer(msg.value);
         if(msg.value > 0){
@@ -211,6 +213,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
 
     function withdraw(uint ibASTRAmount)
         external
+        override
     {
         require(msg.sender == tx.origin, "only EOA");
         _withdraw(payable(msg.sender), ibASTRAmount);
@@ -221,6 +224,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
      */
     function withdrawTo(address payable account, uint ibASTRAmount)
         external
+        override
     {
         require(whiteList[account], "not in white list");
         _withdraw(account, ibASTRAmount);
