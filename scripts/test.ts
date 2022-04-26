@@ -9,13 +9,14 @@ import { ethers } from "hardhat";
 const officialAccount = "0x622cB4f5Ab9fA81eEC83251D23Cc0AF5f2ee029F";
 
 const shibuyaContract = "0x50CE77Ed745374980aE8366424e79D08bD1BB37B";
+const astarContract = "0x3BFcAE71e7d5ebC1e18313CeCEbCaD8239aA386c";
 
 async function main() {
   const theSigner = await ethers.getSigner(officialAccount);
 
-    const c = await ethers.getContractAt("EvmDappsStaking", shibuyaContract, theSigner);
+    const c = await ethers.getContractAt("AdaoDappsStaking", astarContract, theSigner);
     // try{
-        // const r = await c.depositFor(officialAccount, {value: "7000000000000000000"});
+        // const r = await c.depositFor(officialAccount, {value: "502000000000000000000"});
         // const r2 = await c.balanceOf(officialAccount);
         // const r3 = await c.withdraw("1000000000000000000");
         // console.log(`r: ${JSON.stringify(r)}`);
