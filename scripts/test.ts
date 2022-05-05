@@ -26,7 +26,8 @@ async function main() {
     //     console.log(`e: ${JSON.stringify(e)}`)
     // }
     
-    const e = await c.getWithdrawRecords(0, 5);
+    // const e = await c.getUserWithdrawRecords(officialAccount, 0, 20);
+    const e = await c.getWithdrawRecords(0, 20);
     // const e = await c.records("0");
     console.log(`e: ${JSON.stringify(e)}`);
     const e1 = await c.getBalance();
@@ -35,12 +36,14 @@ async function main() {
     const e4 = await c.toWithdrawed();
     const e5 = await c.totalSupply();
     const e6 = await c.recordsIndex();
+    const e7 = await c.getRecordsLength();
     console.log(`e1: ${JSON.stringify(e1.toString())}`);
     console.log(`e2: ${JSON.stringify(e2.toString())}`);
     console.log(`e3: ${JSON.stringify(e3.toString())}`);
     console.log(`e4: ${JSON.stringify(e4.toString())}`);
     console.log(`e5: ${JSON.stringify(e5.toString())}`);
     console.log(`e6: ${JSON.stringify(e6.toString())}`);
+    console.log(`e6: ${JSON.stringify(e7.toString())}`);
 
 }
 

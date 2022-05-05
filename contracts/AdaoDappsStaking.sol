@@ -40,6 +40,8 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
     event PoolUpdate(uint _recordsIndex, uint _ibASTR, uint _ratio);
     event ClaimFailed(uint era);
 
+    uint public queuedAmount;
+
 
     function initialize(
         string memory name,
@@ -190,6 +192,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
         if(msg.value > 0){
             _mint(account, msg.value * RATIO_PRECISION / ratio);
         }
+        unbondAndUnstake(DAPPS_STAKING.read_current_era(), 0);
         stakeRemaining();
     }
 
@@ -206,7 +209,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
         userRecordsIndexes[account].push(index);
         toWithdrawed += astrAmount;
         
-        DAPPS_STAKING.unbond_and_unstake(contractAddress, uint128(astrAmount));
+        unbondAndUnstake(currentEra, astrAmount);
 
         stakeRemaining();
     }
@@ -263,5 +266,18 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
 
     function getUserRecordsLength(address account) external view returns(uint _length){
         return userRecordsIndexes[account].length;
+    }
+
+    function unbondAndUnstake(uint _currentEra, uint _astrAmount) private {
+        uint _eraMod = _currentEra % 10;
+        if(_eraMod == 2 || _eraMod == 4 || _eraMod == 7 || _eraMod == 9){
+            uint _unbindAmount = queuedAmount + _astrAmount;
+            if(_unbindAmount > 0){
+                DAPPS_STAKING.unbond_and_unstake(contractAddress, uint128(_unbindAmount));
+                queuedAmount = 0;
+            }
+        }else if(_astrAmount > 0){
+            queuedAmount += _astrAmount;
+        }
     }
 }
