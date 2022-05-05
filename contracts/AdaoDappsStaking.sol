@@ -205,7 +205,7 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
 
         //save new record
         uint index = records.length;
-        records.push(WithdrawRecord(currentEra, account, astrAmount, index));
+        records.push(WithdrawRecord(formatEra(currentEra), account, astrAmount, index));
         userRecordsIndexes[account].push(index);
         toWithdrawed += astrAmount;
         
@@ -279,5 +279,21 @@ contract AdaoDappsStaking is Initializable, ERC20Upgradeable, OwnableUpgradeable
         }else if(_astrAmount > 0){
             queuedAmount += _astrAmount;
         }
+    }
+
+    function formatEra(uint _era) public pure returns (uint _formatedEra){
+        uint _eraMod;
+        for(uint i = 0; i < 3; i++){
+            _eraMod = (_era + i) % 10;
+            if(_eraMod == 2 || _eraMod == 4 || _eraMod == 7 || _eraMod == 9){
+                return _era + i;
+            }
+        }
+        require(false, "formatEra error");
+    }
+
+    //only used for bugfixing
+    function resetEra(uint _index, uint _era) external onlyOwner {
+        records[_index].era = _era;
     }
 }
